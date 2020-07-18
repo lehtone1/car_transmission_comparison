@@ -1,0 +1,120 @@
+---
+title: "Automatic or Manual - Which Transmission Better for MPG"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(GGally)
+library(car)
+```
+
+## Exploratory analysis
+
+We begin our analysis by looking what kind of data is contained in mtcars. 
+
+```{r mtcars, echo=FALSE}
+str(mtcars)
+```
+
+From the value-analysis, we can see, that there are several columns that seem to contain factor values, that have been defined as numeric columns. We convert these columns to be of factor class. 
+
+```{r}
+mtcars$am <- as.factor(mtcars$am)
+mtcars$cyl <- as.factor(mtcars$cyl)
+mtcars$vs <- as.factor(mtcars$vs)
+mtcars$gear <- as.factor(mtcars$gear)
+mtcars$carb <- as.factor(mtcars$carb)
+```
+
+When visualizing the difference between automatic and manual cars it seems that manual cars have higher mpg values than automatic cars. 
+
+```{r, echo=FALSE, fig.height=3}
+g <- ggplot(mtcars, aes(am, mpg))
+g + geom_boxplot()
+```
+
+## Regression models
+
+To find scientific evidence for verifying the difference between automatic and manual cars we will build several models that use different set of variables for predicting mpg.
+
+We will first build a model, that uses only the am-variable for predicting mpg.
+
+```{r}
+mdl <- lm(mpg ~ am, mtcars)
+summary(mdl)$coef
+```
+
+As we can seen from the results, this model gives a very high confidence p-value=2.850207e-04 that the variable am has an effect on mpg. Suggesting that manual cars would have 7.244939 increase in mpg compared to automatic ones.
+
+The problem is that there might be other variables linked to the am-variable that might be behind this effect. This means that the effect would be an indirect one through some other variable. To understand more on how different provided variables affect mpg, we will build a model that uses all the available variables given in the mtcars-dataset for predicting mpg.
+
+```{r}
+mdl2 <- lm(mpg ~ ., mtcars)
+summary(mdl2)$coef
+```
+
+Interestingly in this model am does not have a significant effect on mpg p-value=0.711. In fact the model states, that none of the variables has a significant effect on mpg. It might be though that we are now using too many variables that might be related with each other. For analyzing how related the used variables are with each others, we look at the variable inflation factors.
+
+```{r}
+vif(mdl2)
+```
+
+The variance inflation factors show that some of the variables e.g. disp, hp and wt seem to be very related to the other used variables. This indicates that using a subset of the variables might be a reasonable choice.
+
+For deciding which variables to include to the model, we will look at the mdl2 coefficient tables p-values. From the table we can see, that there are two variables with less that 0.1 p-values that are wt and hp. The rest of the variables have larger than 0.2 p-values, that means that they do not seem to have such a significant impact on the model. For this we will compare four models with different sets of independent variables. 
+
+```{r, echo=FALSE}
+mdl3 <- update(mdl, mpg ~ am + wt)
+mdl4 <- update(mdl, mpg ~ am + wt + hp)
+mdl5 <- update(mdl, mpg ~ am + wt + hp + cyl + disp + drat + qsec + vs + gear + carb)
+anova(mdl, mdl3, mdl4, mdl5)
+```
+
+From the anova results we can see, that the model that used am, wt and hp as independent variables was the most complicated model, that performed significantly better than the original model. 
+
+```{r, echo=FALSE}
+summary(mdl4)$coef
+```
+
+When looking at the summary of the model, we found significant evidence that the independent variables wt and hp effect mpg, bu we fail to find significant evidence that am would effect mpg. 
+
+## Residual diagnostics
+
+For a quick residual diagnostic we plot the residual values against the fitted prediction values. 
+
+```{r, echo=FALSE}
+plot(mdl4, which=c(1), caption = list("Residuals vs Fitted"))
+```
+
+No significant pattern can be found from the residual values. Some extreme values are found (Chrysler Imperial, Toyota Corolla and Fiat128) that should be looked in more detail and possibly left out from the model. 
+
+
+## Results
+
+1. Is an automatic or manual transmission better for MPG?
+
+The answer to this question relys heavily on the model used for investigating the relationship between am and mpg. When a model that uses only am to predict mpg is used, significant evidence can be found that manual cars transmission better for mpg. This model though excludes the potential links between am and other variables that might be the real cause for this difference. To answer this problem we intended to find the simplest model that would still perform significantly better than the model using only am. A model was found that used in addition to am the variables wt and hp. Even with only three variables in use there was no significant evidence p-value = 1.412682e-01 that am had an effect on mpg. This is verified by the 95% confidence interval which shows that the lower limit is -0.736 would actually reverse the results into that automatic would perform better in mpg. Overall we conclude that according to the evidence found in the analysis we do not have enough proof to say that did automatic or manual transmit better on mpg. 
+
+```{r, echo=FALSE}
+confint(mdl4)
+```
+
+2. Quantify the MPG difference between automatic and manual transmissions
+
+As we cannot even say with significant evidence that did automatic or manual transmit better for mpg, we cannot say with confidence the difference between the automatic and manual transmissions. According to the model that used the variables am, wt and hp to explain differences in mpg the estimated coefficient difference for manual cars was  2.08371013. Yet as the 95% confidence interval shows the coeffcient might even be of an opposite sign.
+
+
+
+
+
+
+
+
+
+
+
+
